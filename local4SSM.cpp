@@ -95,7 +95,7 @@ Type objective_function<Type>::operator() ()
   for(int i = 0; i < y.rows(); ++i){
     //mu(0) = y(i,0)-states(i+1,0);
     //mu(1) = y(i,1)-states(i+1,1);
-    mu = y.row(i) - states.row(i);
+    mu = y.row(i) - states.row(i+1);
     nll += obsDensity(mu); // observation ll
   }
   //REPORT(states);
