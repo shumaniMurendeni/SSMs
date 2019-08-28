@@ -1,4 +1,4 @@
-// Local 3D State-space model
+// Local 2D State-space model
 #include <TMB.hpp> //you have to add the multivariate normal negative likelihood and you are done with this template
 //also try and figure out which value to use.
 
