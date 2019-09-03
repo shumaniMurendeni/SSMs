@@ -1,6 +1,6 @@
-
-library(TMB)
-library(tidyquant)
+#load R packages
+suppressMessages(library(TMB))
+suppressMessages(library(tidyquant))
 
 Y <- cbind(FANG$adjusted[FANG$symbol=="FB"],
            FANG$adjusted[FANG$symbol=="NFLX"],
@@ -46,7 +46,7 @@ Optimisation <- function(N = 1000, P = 4, sdObs, sdPro, Rho, init, DLL = "local4
   obj1 <- MakeADFun(list(y = x$Y), TMBPars(No.Cols = P,No.Rows = N), random="states",DLL=DLL)
   # Minimise the nll
   #print("Shumani Rocks")
-  opt1 <- nlminb(obj1$par,obj1$fn,obj1$gr)
+  suppressMessages(opt1 <- nlminb(obj1$par,obj1$fn,obj1$gr))
   
   est <- tryCatch(summary(sdreport(obj1)), error=function(e) NA)
   return(tryCatch(est[rownames(est)%in%c("sigmaObsA", "sigmaObsB","sigmaObsC", "sigmaObsD",
