@@ -84,7 +84,7 @@ Type objective_function<Type>::operator() ()
   
   nll += initDensity(mu); //Initial negative likelihood
   
-  // process and observation model and negative likelihood:
+  // process model and negative likelihood:
   for (int i = 1; i < states.rows(); ++i) {
     mu(0) = states(i, 0) - RhoA * states(i - 1, 0);
     mu(1) = states(i, 1) - RhoB * states(i - 1, 1);
@@ -92,14 +92,12 @@ Type objective_function<Type>::operator() ()
     mu(3) = states(i, 3) - RhoD * states(i - 1, 3);
     nll += proDensity(mu); //process ll
   }
+  //observation model and negative likelihood:
   for(int i = 0; i < y.rows(); ++i){
-    //mu(0) = y(i,0)-states(i+1,0);
-    //mu(1) = y(i,1)-states(i+1,1);
     mu = y.row(i) - states.row(i+1);
     nll += obsDensity(mu); // observation ll
   }
   //REPORT(states);
-  return nll;/* Shumani*/
-  //return 0.0;
+  return nll;
  }
  
