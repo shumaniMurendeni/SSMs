@@ -1,7 +1,7 @@
-#load R packages
+
 suppressMessages(library(TMB))
 suppressMessages(library(tidyquant))
-
+suppressMessages(library(doParallel))
 Y <- cbind(FANG$adjusted[FANG$symbol=="FB"],
            FANG$adjusted[FANG$symbol=="NFLX"],
            FANG$adjusted[FANG$symbol=="AMZN"],
@@ -32,14 +32,14 @@ simData <- function(N = 1000,P = 4,
   return(list(Y=Y, states = states, Rho = Rho, 
               sigmaPro = sigmaPro, sigmaObs = sigmaObs))
 }
-simData(N = 10, P = 2)
+#simData(N = 10, P = 2)
 TMBPars <- function(No.Cols = 4,No.Rows = 100){
   return(list(logit_Rho = rep(0.95,No.Cols), log_sigma_proc = rep(1,No.Cols),
               log_sigma_obs = rep(1,No.Cols),states = matrix(0, No.Rows+1,No.Cols)))
 }
 
 local1SSM <- dyn.load(dynlib("local1SSM"))
-local3SSM <- dyn.load(dynlib("local3DSSM"))
+local2SSM <- dyn.load(dynlib("local3DSSM"))
 local4SSM <- dyn.load(dynlib("local4SSM"))
 Optimisation <- function(N = 1000, P = 4, sdObs, sdPro, Rho, init, DLL = "local4SSM"){
   x <- simData(N = N, P = P, Rho = Rho, sigmaPro = sdPro, sigmaObs = sdObs, init = init); #print("Shumani Rocks")
@@ -55,15 +55,52 @@ Optimisation <- function(N = 1000, P = 4, sdObs, sdPro, Rho, init, DLL = "local4
            error=function(e) NA))
 }
 
-estimates <- matrix(0,300,12)
-colnames(estimates) <- c("sigmaObsA", "sigmaObsB","sigmaObsC", "sigmaObsD",
-                         "sigmaProA", "sigmaProB","sigmaProC", "sigmaProD",
-                         "RhoA","RhoB","RhoC","RhoD")
-for (i in 1:300){
-  estimates[i,] <- Optimisation(N = 500, P = 4, sdObs = c(0.35, 0.4, 0.3,0.44),
-                                sdPro = c(0.175,0.2, 0.15, 0.22), Rho = c(0.87,0.99, 0.98,0.89),
-                                init = c(1,1,1,1), DLL = "local4SSM")}
-estimates
-write.csv(estimates, file = "estimates.csv")
-#tryCatch(est[rownames(est)%in%"states",1],error = function(e) NA)
-#obj1$env$parList()$states
+##create matrix to store summary results from each run
+simResEst <- matrix(0,6,12); simResSd <- matrix(0,6,12) #matrix to store estimations and their SD
+colnames(simResEst) <- c("sigmaObsA", "sigmaObsB","sigmaObsC", "sigmaObsD",
+                      "sigmaProA", "sigmaProB","sigmaProC", "sigmaProD",
+                      "RhoA","RhoB","RhoC","RhoD")
+colnames(simResSd) <- c("sigmaObsA", "sigmaObsB","sigmaObsC", "sigmaObsD",
+                      "sigmaProA", "sigmaProB","sigmaProC", "sigmaProD",
+                      "RhoA","RhoB","RhoC","RhoD")
+
+sdObs <- c(0.175,0.2, 0.15, 0.22)
+Rho <- c(0.87,0.99, 0.98,0.89)
+sdPro <- matrix(data = rbind(c(0.165,0.19, 0.14, 0.20),c(0.175,0.2, 0.15, 0.22),
+                             c(0.185,0.21, 0.16, 0.23),5*c(0.175,0.2, 0.15, 0.22),
+                             8*c(0.175,0.2, 0.15, 0.22),10*c(0.175,0.2, 0.15, 0.22))
+                , 6, 4)
+
+cl <- makeCluster(detectCores())
+registerDoParallel(cl)
+
+results <- foreach (j = 1:6, .combine = "c") %dopar%{
+  library(TMB)
+  local4SSM <- dyn.load(dynlib("local4SSM"))
+  estimates <- matrix(0, 100, 12)
+  colnames(estimates) <- paste(c("sigmaObsA", "sigmaObsB","sigmaObsC", "sigmaObsD",
+                           "sigmaProA", "sigmaProB","sigmaProC", "sigmaProD",
+                           "RhoA","RhoB","RhoC","RhoD"),j)
+  set.seed(19950311)
+  for (i in 1:100){
+    estimates[i,] <- Optimisation(N = 1000, P = 4, sdObs = sdObs,
+                                  sdPro = sdPro[j,], Rho = Rho,
+                                  init = c(1,1,1,1), DLL = "local4SSM")}
+  #estimates
+  #write.csv(estimates, file = "estimates.csv")
+  #tryCatch(est[rownames(est)%in%"states",1],error = function(e) NA)
+  #obj1$env$parList()$states
+  
+  #for (i in 1:ncol(estimates)){
+  #  hist(estimates[,i],
+  #       xlab = colnames(estimates)[i],
+  #       main = paste0("histogram of ",colnames(estimates[i])))
+  #}
+  #simResEst[j,] <- apply(estimates,2,mean)
+  #simResSd[j,] <- apply(estimates,2,sd)
+  list(est = apply(estimates, 2, mean), se = apply(estimates,2,sd))
+}
+#write.csv(simResEst, "paramsEst with seed.csv")
+#write.csv(simResSd, "paramsSd with seed.csv")
+stopCluster(cl)
+results
