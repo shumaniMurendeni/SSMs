@@ -104,3 +104,4 @@ results <- foreach (j = 1:6, .combine = "c") %dopar%{
 #write.csv(simResSd, "paramsSd with seed.csv")
 stopCluster(cl)
 results
+save.image("4D sim.RData")
