@@ -1,5 +1,5 @@
 //1D local SSM
-#include <TMB.hpp> //https://kaskr.github.io/adcomp/_book/Toolbox.html#time-series
+#include <TMB.hpp> 
 
 template<class Type>
 Type objective_function<Type>::operator() ()
